@@ -354,7 +354,9 @@ function bind(){
 (async()=>{
  try{
   const need=['app','auth','firestore'];
-  if(!window.firebase){for(const m of need){await new Promise((ok,no)=>{const t=document.createElement('script');t.src='https://www.gstatic.com/firebasejs/10.12.2/firebase-'+m+'-compat.js';t.onload=ok;t.onerror=()=>no(new Error('load '+m));document.head.appendChild(t)})}}
+  if(!window.firebase){const bases=['https://www.gstatic.com/firebasejs/10.12.2/firebase-','https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-','https://unpkg.com/firebase@10.12.2/firebase-'];
+   const ld=u=>new Promise((ok,no)=>{const t=document.createElement('script');t.src=u;t.onload=ok;t.onerror=()=>{t.remove();no(new Error('load'))};document.head.appendChild(t)});
+   for(const m of need){let done=false;for(let round=0;round<2&&!done;round++){for(const b of bases){try{await ld(b+m+'-compat.js');done=true;break}catch(e){}}}if(!done)throw new Error('load '+m+' (alle Quellen blockiert)')}}
   firebase.initializeApp(FB_CONFIG);
   const cred=await firebase.auth().signInAnonymously();
   uid=(cred&&cred.user?cred.user.uid:firebase.auth().currentUser.uid);

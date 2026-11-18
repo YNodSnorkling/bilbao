@@ -163,6 +163,7 @@ const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 const fmt=n=>n.toLocaleString('de-DE');
 try{me=localStorage.getItem('bcc_me')}catch(e){}
 let myGen='';try{myGen=localStorage.getItem('bcc_gen')||''}catch(e){}
+const QA={Wolle:['c2NobWFs'],Spani:['Z2xhdHpl'],Mapes:['bmFzZQ=='],Marcus:['ZmVpdmVs','ZmlldmVs'],Tino:['Y2FydmE=']};let quizFor=null,quizErr='',quizVal='';
 let showNames=false,seenName=null,playersReady=false;
 let introSeen=false;try{introSeen=localStorage.getItem('bcc_intro')==='1'}catch(e){}
 function chOf(name){const a=[];for(let r=0;r<6;r++){const s=S.subs[r+'_'+name];if(!s)break;a.push({opt:s.opt,md:s.md})}return a}
@@ -233,6 +234,7 @@ function render0(force){
  let h=me?'<div class="bar"><span class="t">PCT 2026: Bilbao</span><span class="who" id="whoBtn" role="button" tabindex="0" style="cursor:pointer" title="Spielerliste">'+av(me,34)+'<span>Du bist <b>'+esc(me)+'</b> ▾'+(isHost?' · <span class="pill">Spielleitung</span>':'')+'</span></span></div><div class="band"></div>':'<div class="hero"><p class="big">PCT 2026:<br>Bilbao</p><div class="rule"></div><div class="tag"><b>Alles wird gut und schee.</b><br>5 Jungs beim PCT.</div><div class="kicker">Bilbao Capital Allocation Challenge</div><div class="faces">'+PLAYERS.map(n=>av(n)).join('')+'</div></div><div class="band"></div><div class="sub">Willkommen'+(isHost?' · <span class="pill">Spielleitung</span>':'')+'</div>';
  if(err)h+='<div class="card" style="border-color:var(--acc)">'+esc(err)+'</div>';
   if(me&&showNames){h+='<div class="card names"><h2>Wer ist dabei?</h2><p class="mut">Tippe auf deinen Namen, um zurück zum Spiel zu kommen.</p>';for(const n of PLAYERS){const own=n===me,p=S.players[n],taken=!!(p&&p.uid);h+='<button class="nm'+(own?'':' off')+'" '+(own?'id="whoBack"':'disabled')+'>'+av(n)+'<span>'+n+(own?' (du)':taken?' (vergeben)':' (frei)')+'</span></button>'}h+='</div>';if(h===lastH&&!force)return;lastH=h;A.innerHTML=h;bind();return}
+  if(!me&&quizFor){h+='<div class="card"><div style="text-align:center">'+av(quizFor,84)+'</div><h2 style="margin-top:10px">Hallo '+esc(quizFor)+'?</h2><p><b>Wie lautet der Alias deiner Figur in Spanis Video?</b></p><input id="qa" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" value="'+esc(quizVal)+'" placeholder="Alias" style="width:100%;font:inherit;padding:12px;border:2px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)">'+(quizErr?'<p style="color:var(--acc);font-weight:700;margin:8px 0 0">'+esc(quizErr)+'</p>':'')+'<p style="margin-top:12px"><button id="qaOk">Bestätigen</button> <button class="sec" id="qaBack">Zurück</button></p></div>';if(h===lastH&&!force)return;lastH=h;A.innerHTML=h;bind();return}
   if(!me){h+='<div class="card names"><h2>Wer bist du?</h2>';for(const n of PLAYERS){const p=S.players[n],taken=p&&p.uid&&p.uid!==uid;h+='<button class="nm'+(taken?' off':'')+'" '+(taken?'disabled':'')+' data-name="'+n+'">'+av(n)+'<span>'+n+(taken?' (vergeben)':'')+'</span></button>'}h+='</div>';if(isHost)h+=hostPanel(0);if(h===lastH&&!force)return;lastH=h;A.innerHTML=h;bind();return}
  if(!introSeen){if(me==='Marcus')h+=coffeeCard();h+=introCard();if(isHost)h+=hostPanel(0);if(h===lastH&&!force)return;lastH=h;A.innerHTML=h;bind();return}
  const closed=Math.min(6,S.game.closed||0);
@@ -343,7 +345,14 @@ function bind(){
  const wb=$('#whoBtn');if(wb)wb.onclick=()=>{showNames=true;render(true);window.scrollTo(0,0)};const wk=$('#whoBack');if(wk)wk.onclick=()=>{showNames=false;render(true);window.scrollTo(0,0)};
  const ig=$('#introGo');if(ig)ig.onclick=()=>{introSeen=true;try{localStorage.setItem('bcc_intro','1')}catch(e){}render(true);window.scrollTo(0,0)};
  document.querySelectorAll('[data-name]').forEach(b=>b.onclick=async()=>{const n=b.dataset.name;const cur=S.players[n]||{};if(cur.uid&&cur.uid!==uid){err='Name schon vergeben.';render();return}
-  me=n;err='';myGen=S.game.gen||'';try{localStorage.setItem('bcc_me',n);localStorage.setItem('bcc_gen',myGen)}catch(e){}render();try{await db.doc('players/'+n).set({...cur,uid,at:Date.now()})}catch(e){err='Anmelden gespeichert nur lokal: '+(e.code||e.message)+'.';render()}});
+  if(!(cur.uid&&cur.uid===uid)){quizFor=n;quizErr='';quizVal='';err='';render(true);return}
+  await login(n)});
+ const qo=$('#qaOk'),qi=$('#qa'),qb=$('#qaBack');
+ if(qb)qb.onclick=()=>{quizFor=null;quizErr='';quizVal='';render(true)};
+ if(qi){qi.oninput=()=>{quizVal=qi.value};qi.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();qo.click()}};if(!qi._f){qi._f=1;try{qi.focus()}catch(e){}}}
+ if(qo)qo.onclick=async()=>{const v=(qi?qi.value:'').trim().toLowerCase();const ok=(QA[quizFor]||[]).some(x=>atob(x)===v);if(!ok){quizErr='Das war leider falsch. Versuch es nochmal.';quizVal='';render(true);return}const n=quizFor;quizFor=null;quizErr='';quizVal='';await login(n)};
+ async function login(n){const cur=S.players[n]||{};
+  me=n;err='';myGen=S.game.gen||'';try{localStorage.setItem('bcc_me',n);localStorage.setItem('bcc_gen',myGen)}catch(e){}render();try{await db.doc('players/'+n).set({...cur,uid,at:Date.now()})}catch(e){err='Anmelden gespeichert nur lokal: '+(e.code||e.message)+'.';render()}}
  const m=$('#memo');if(m)m.oninput=()=>draft.memo=m.value;
  document.querySelectorAll('[data-pt]').forEach(i=>i.oninput=()=>{const t=[...document.querySelectorAll('[data-pt]')].reduce((x,e)=>x+(+e.value||0),0);const el=$('#ptsum');if(el){el.textContent=t;el.style.color=t===100?'inherit':'var(--acc)'}});
  const sm=$('#sendMemo');if(sm)sm.onclick=async()=>{const pts={};let t=0;document.querySelectorAll('[data-pt]').forEach(e=>{pts[e.dataset.pt]=Math.max(0,+e.value||0);t+=pts[e.dataset.pt]});

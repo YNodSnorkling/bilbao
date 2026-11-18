@@ -1,3 +1,5 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>PCT 2026 Bilbao</title>
 <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
 <style>
@@ -40,6 +42,7 @@ td .av{width:26px;height:26px;margin-right:6px;border-width:1px}
 .foot{margin:28px -16px 0}
 #qr{background:#fff;padding:10px;border-radius:8px;display:inline-block}
 </style>
+</head><body>
 <div id="app"><p class="mut">Lade …</p></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script>
@@ -353,13 +356,12 @@ function bind(){
  const q=$('#qr');if(q&&window.qrcode){const c=qrcode(0,'M');c.addData(location.origin+location.pathname);c.make();q.innerHTML=c.createSvgTag(5,0)}}
 (async()=>{
  try{
-  const need=['app','auth','firestore'];
+  const need=['app','firestore'];
   if(!window.firebase){const bases=['https://www.gstatic.com/firebasejs/10.12.2/firebase-','https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-','https://unpkg.com/firebase@10.12.2/firebase-'];
    const ld=u=>new Promise((ok,no)=>{const t=document.createElement('script');t.src=u;t.onload=ok;t.onerror=()=>{t.remove();no(new Error('load'))};document.head.appendChild(t)});
    for(const m of need){let done=false;for(let round=0;round<2&&!done;round++){for(const b of bases){try{await ld(b+m+'-compat.js');done=true;break}catch(e){}}}if(!done)throw new Error('load '+m+' (alle Quellen blockiert)')}}
   firebase.initializeApp(FB_CONFIG);
-  const cred=await firebase.auth().signInAnonymously();
-  uid=(cred&&cred.user?cred.user.uid:firebase.auth().currentUser.uid);
+  try{uid=localStorage.getItem('bcc_uid')||('d'+Math.random().toString(36).slice(2)+Date.now().toString(36));localStorage.setItem('bcc_uid',uid)}catch(e){uid='d'+Math.random().toString(36).slice(2)+Date.now().toString(36)}
   db=firebase.firestore();
   const qs=new URLSearchParams(location.search);
   if(qs.get('host')===HOST_CODE){try{localStorage.setItem('bcc_host','1')}catch(e){}history.replaceState(null,'',location.pathname)}
@@ -371,3 +373,4 @@ function bind(){
  db.doc('game/state').onSnapshot(s=>{S.game=s.exists?s.data():{closed:0};render()},e=>{});
  render()})();
 </script>
+</body></html>

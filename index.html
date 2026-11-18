@@ -41,6 +41,8 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:5px 3px;b
 td .av{width:26px;height:26px;margin-right:6px;border-width:1px}
 .pill{display:inline-block;font-size:12px;border-radius:99px;padding:2px 10px;background:var(--acc2);color:var(--on2)}
 .mut{color:var(--mut)}.ok{color:var(--ok)}
+/* iPhone: Inhalt nicht unter Statusleiste / Dynamic Island */
+.hero{padding-top:calc(28px + env(safe-area-inset-top,0px))}.bar{padding-top:calc(10px + env(safe-area-inset-top,0px))}#app{padding-bottom:calc(80px + env(safe-area-inset-bottom,0px))}
 .foot{margin:28px -16px 0}
 #qr{background:#fff;padding:10px;border-radius:8px;display:inline-block}
 </style>
@@ -160,6 +162,7 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt=n=>n.toLocaleString('de-DE');
 try{me=localStorage.getItem('bcc_me')}catch(e){}
+let showNames=false,seenName=null,playersReady=false;
 let introSeen=false;try{introSeen=localStorage.getItem('bcc_intro')==='1'}catch(e){}
 function chOf(name){const a=[];for(let r=0;r<6;r++){const s=S.subs[r+'_'+name];if(!s)break;a.push({opt:s.opt,md:s.md})}return a}
 function chFilled(name,closed,def){const a=[];for(let r=0;r<closed;r++){const s=S.subs[r+'_'+name];a.push(s?{opt:s.opt,md:s.md}:{opt:Object.keys(ROUNDS[r].opts)[0],md:['A','A']})}return a}
@@ -223,8 +226,10 @@ function introCard(){return '<div class="card"><h2>Willkommen im Jahr 1990</h2><
 function render0(force){
  if(!force&&document.activeElement&&/^(TEXTAREA|INPUT)$/.test(document.activeElement.tagName)){pendingRender=true;return}
  const A=$('#app');const sy=window.scrollY;setTimeout(()=>window.scrollTo(0,sy),0);if(!db){A.innerHTML='<h1>Bilbao Challenge</h1><div class="card">Keine Verbindung zur Datenbank. Bitte Internetverbindung prüfen und die Seite neu laden.'+(err?'<p class="mut">Technische Meldung: '+esc(err)+'</p>':'')+'</div>';return}
- let h=me?'<div class="bar"><span class="t">PCT 2026: Bilbao</span><span class="who">'+av(me,34)+'<span>Du bist <b>'+esc(me)+'</b>'+(isHost?' · <span class="pill">Spielleitung</span>':'')+'</span></span></div><div class="band"></div>':'<div class="hero"><p class="big">PCT 2026:<br>Bilbao</p><div class="rule"></div><div class="tag"><b>Alles wird gut und schee.</b><br>5 Jungs beim PCT.</div><div class="kicker">Bilbao Capital Allocation Challenge</div><div class="faces">'+PLAYERS.map(n=>av(n)).join('')+'</div></div><div class="band"></div><div class="sub">Willkommen'+(isHost?' · <span class="pill">Spielleitung</span>':'')+'</div>';
+ if(me&&playersReady){const mp=S.players[me];if(mp&&mp.uid===uid)seenName=me;else if(seenName===me){me=null;seenName=null;showNames=false;try{localStorage.removeItem('bcc_me');localStorage.removeItem('bcc_intro')}catch(e){}introSeen=false;draft={memo:'',opt:null,md:['A','A'],fc:''};err='Das Spiel wurde zurückgesetzt. Bitte wähle deinen Namen neu.'}}
+ let h=me?'<div class="bar"><span class="t">PCT 2026: Bilbao</span><span class="who" id="whoBtn" role="button" tabindex="0" style="cursor:pointer" title="Spielerliste">'+av(me,34)+'<span>Du bist <b>'+esc(me)+'</b> ▾'+(isHost?' · <span class="pill">Spielleitung</span>':'')+'</span></span></div><div class="band"></div>':'<div class="hero"><p class="big">PCT 2026:<br>Bilbao</p><div class="rule"></div><div class="tag"><b>Alles wird gut und schee.</b><br>5 Jungs beim PCT.</div><div class="kicker">Bilbao Capital Allocation Challenge</div><div class="faces">'+PLAYERS.map(n=>av(n)).join('')+'</div></div><div class="band"></div><div class="sub">Willkommen'+(isHost?' · <span class="pill">Spielleitung</span>':'')+'</div>';
  if(err)h+='<div class="card" style="border-color:var(--acc)">'+esc(err)+'</div>';
+  if(me&&showNames){h+='<div class="card names"><h2>Wer ist dabei?</h2><p class="mut">Tippe auf deinen Namen, um zurück zum Spiel zu kommen.</p>';for(const n of PLAYERS){const own=n===me,p=S.players[n],taken=!!(p&&p.uid);h+='<button class="nm'+(own?'':' off')+'" '+(own?'id="whoBack"':'disabled')+'>'+av(n)+'<span>'+n+(own?' (du)':taken?' (vergeben)':' (frei)')+'</span></button>'}h+='</div>';if(h===lastH&&!force)return;lastH=h;A.innerHTML=h;bind();return}
   if(!me){h+='<div class="card names"><h2>Wer bist du?</h2>';for(const n of PLAYERS){const p=S.players[n],taken=p&&p.uid&&p.uid!==uid;h+='<button class="nm'+(taken?' off':'')+'" '+(taken?'disabled':'')+' data-name="'+n+'">'+av(n)+'<span>'+n+(taken?' (vergeben)':'')+'</span></button>'}h+='</div>';if(isHost)h+=hostPanel(0);if(h===lastH&&!force)return;lastH=h;A.innerHTML=h;bind();return}
  if(!introSeen){if(me==='Marcus')h+=coffeeCard();h+=introCard();if(isHost)h+=hostPanel(0);if(h===lastH&&!force)return;lastH=h;A.innerHTML=h;bind();return}
  const closed=Math.min(6,S.game.closed||0);
@@ -332,6 +337,7 @@ function hostPanel(closed){let h='<div class="card"><h2>Spielleitung</h2>';
  h+='<details style="margin:10px 0"><summary>Testmodus (nur für dich allein)</summary><p class="mut">Spiele alle Rollen selbst durch: Spieler wechseln oder die anderen automatisch zufällig einreichen lassen.</p><select id="swSel">'+PLAYERS.map(n=>'<option>'+n+'</option>').join('')+'</select><p><button class="sec" id="swBtn">Zu diesem Spieler wechseln</button> <button class="sec" id="fillBtn">Fehlende Spieler auffüllen</button></p></details>';
  h+='<button class="sec" id="reset">Spiel zurücksetzen</button></div>';return h}
 function bind(){
+ const wb=$('#whoBtn');if(wb)wb.onclick=()=>{showNames=true;render(true);window.scrollTo(0,0)};const wk=$('#whoBack');if(wk)wk.onclick=()=>{showNames=false;render(true);window.scrollTo(0,0)};
  const ig=$('#introGo');if(ig)ig.onclick=()=>{introSeen=true;try{localStorage.setItem('bcc_intro','1')}catch(e){}render(true);window.scrollTo(0,0)};
  document.querySelectorAll('[data-name]').forEach(b=>b.onclick=async()=>{const n=b.dataset.name;const cur=S.players[n]||{};if(cur.uid&&cur.uid!==uid){err='Name schon vergeben.';render();return}
   me=n;err='';try{localStorage.setItem('bcc_me',n)}catch(e){}render();try{await db.doc('players/'+n).set({...cur,uid,at:Date.now()})}catch(e){err='Anmelden gespeichert nur lokal: '+(e.code||e.message)+'. Für gemeinsames Spielen braucht dein Konto Contributor-Zugriff.';render()}});
@@ -370,7 +376,7 @@ function bind(){
   try{isHost=localStorage.getItem('bcc_host')==='1'}catch(e){}
  }catch(e){db=null;err='Verbindung fehlgeschlagen ('+(e.code||e.message)+')'}
  if(!db){render();return}
- const coll=(name,key)=>db.collection(name).onSnapshot(s=>{const o={};s.docs.forEach(d=>o[d.id]=d.data());S[key]=o;render()},e=>{err='Lesen fehlgeschlagen: '+e.code;render()});
+ const coll=(name,key)=>db.collection(name).onSnapshot(s=>{const o={};s.docs.forEach(d=>o[d.id]=d.data());S[key]=o;if(key==='players')playersReady=true;render()},e=>{err='Lesen fehlgeschlagen: '+e.code;render()});
  coll('players','players');coll('subs','subs');coll('opens','opens');
  db.doc('game/state').onSnapshot(s=>{S.game=s.exists?s.data():{closed:0};render()},e=>{});
  render()})();
